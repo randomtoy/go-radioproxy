@@ -1,0 +1,73 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build artifacts
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+
+          targets=(
+            "linux amd64"
+            "linux arm64"
+            "darwin amd64"
+            "darwin arm64"
+            "windows amd64"
+            "windows arm64"
+          )
+
+          for target in "${targets[@]}"; do
+            read -r GOOS GOARCH <<<"$target"
+
+            outdir="dist/stream-proxy_${TAG}_${GOOS}_${GOARCH}"
+            mkdir -p "$outdir"
+
+            ext=""
+            if [ "$GOOS" = "windows" ]; then
+              ext=".exe"
+            fi
+
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -trimpath -ldflags="-s -w" -o "$outdir/stream-proxy${ext}" ./cmd/stream-proxy
+
+            cp README.md "$outdir/README.md"
+            cp users.yaml "$outdir/users.yaml"
+
+            if [ "$GOOS" = "windows" ]; then
+              (cd dist && zip -q -r "stream-proxy_${TAG}_${GOOS}_${GOARCH}.zip" "$(basename "$outdir")")
+            else
+              tar -C dist -czf "dist/stream-proxy_${TAG}_${GOOS}_${GOARCH}.tar.gz" "$(basename "$outdir")"
+            fi
+
+            rm -rf "$outdir"
+          done
+
+          (cd dist && sha256sum * > checksums.txt)
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
