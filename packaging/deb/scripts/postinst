@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+if ! id -u stream-proxy >/dev/null 2>&1; then
+  adduser --system --group --no-create-home --home /nonexistent --shell /usr/sbin/nologin stream-proxy
+fi
+
+if [ -f /etc/stream-proxy/users.yaml ]; then
+  chown root:stream-proxy /etc/stream-proxy/users.yaml || true
+  chmod 0640 /etc/stream-proxy/users.yaml || true
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+fi
+
+exit 0

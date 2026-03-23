@@ -90,8 +90,46 @@ users:
 Пример генерации bcrypt hash:
 
 ```bash
-# нужен пакет apache2-utils (утилита htpasswd)
-htpasswd -nBC 10 "" | tr -d ':\n'
+# встроенная команда приложения (без внешних зависимостей)
+stream-proxy hash-password --stdin
+# затем введите пароль и нажмите Enter
+```
+
+Non-interactive встроенный вариант:
+
+```bash
+stream-proxy hash-password --password "MyStrongPassword"
+```
+
+Альтернатива через `htpasswd` (если установлен):
+
+```bash
+htpasswd -nbBC 10 "" "MyStrongPassword" | tr -d ':\n'
+```
+
+### Как добавить пользователя
+
+1. Сгенерируйте bcrypt hash для нового пароля.
+2. Добавьте запись в `users.yaml`:
+
+```yaml
+users:
+  - username: new-user
+    password_hash: "$2y$10$...."
+    enabled: true
+    max_streams: 2
+```
+
+3. Перечитайте конфиг без рестарта процесса:
+
+```bash
+kill -HUP <pid_stream-proxy>
+```
+
+Если сервис запущен через `systemd`:
+
+```bash
+sudo systemctl reload stream-proxy
 ```
 
 ## Конфигурация (ENV)
@@ -155,6 +193,28 @@ docker run --rm -p 8080:8080 \
   -v $(pwd)/users.yaml:/app/users.yaml:ro \
   -e USERS_FILE=/app/users.yaml \
   universal-stream-proxy:local
+```
+
+## Debian Package + systemd
+
+`.deb` пакет кладет файлы в:
+
+- бинарник: `/usr/bin/stream-proxy`
+- users config: `/etc/stream-proxy/users.yaml`
+- env overrides: `/etc/default/stream-proxy`
+- unit: `/lib/systemd/system/stream-proxy.service`
+
+После установки пакета:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now stream-proxy
+```
+
+Перечитать `users.yaml` на лету:
+
+```bash
+sudo systemctl reload stream-proxy
 ```
 
 ## Логирование

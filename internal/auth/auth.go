@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
@@ -35,15 +36,31 @@ type usersFile struct {
 }
 
 type Authenticator struct {
-	users map[string]User
+	mu            sync.RWMutex
+	users         map[string]User
+	usersFilePath string
 }
 
 func LoadFromFile(path string) (*Authenticator, error) {
+	users, err := loadUsers(path)
+	if err != nil {
+		return nil, err
+	}
+	return &Authenticator{
+		users:         users,
+		usersFilePath: path,
+	}, nil
+}
+
+func loadUsers(path string) (map[string]User, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read users file: %w", err)
 	}
+	return parseUsers(data)
+}
 
+func parseUsers(data []byte) (map[string]User, error) {
 	var cfg usersFile
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse users file: %w", err)
@@ -72,11 +89,24 @@ func LoadFromFile(path string) (*Authenticator, error) {
 		users[u.Username] = u
 	}
 
-	return &Authenticator{users: users}, nil
+	return users, nil
+}
+
+func (a *Authenticator) Reload() error {
+	users, err := loadUsers(a.usersFilePath)
+	if err != nil {
+		return err
+	}
+	a.mu.Lock()
+	a.users = users
+	a.mu.Unlock()
+	return nil
 }
 
 func (a *Authenticator) Authenticate(username, password string) (User, error) {
+	a.mu.RLock()
 	user, ok := a.users[username]
+	a.mu.RUnlock()
 	if !ok {
 		return User{}, ErrInvalidCredentials
 	}

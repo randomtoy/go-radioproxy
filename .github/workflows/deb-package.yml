@@ -1,0 +1,109 @@
+name: Debian Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve package version
+        id: version
+        env:
+          RAW_VERSION: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          version="${RAW_VERSION#v}"
+          version="$(printf '%s' "$version" | sed 's/[^0-9A-Za-z.+:~-]/-/g')"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]'; then
+            version="0.${version}"
+          fi
+
+          echo "value=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build .deb packages
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          pkg_name="stream-proxy"
+          maintainer="go-radioproxy maintainers"
+          description="Universal audio stream proxy service"
+
+          mkdir -p dist
+
+          for arch in amd64 arm64; do
+            build_dir="dist/build-${arch}"
+            pkg_root="dist/${pkg_name}_${VERSION}_${arch}"
+
+            rm -rf "$build_dir" "$pkg_root"
+            mkdir -p "$build_dir" "$pkg_root/DEBIAN" "$pkg_root/usr/bin" "$pkg_root/etc/${pkg_name}" "$pkg_root/etc/default" "$pkg_root/usr/share/doc/${pkg_name}" "$pkg_root/lib/systemd/system"
+
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+              go build -trimpath -ldflags="-s -w" -o "$build_dir/${pkg_name}" ./cmd/stream-proxy
+
+            install -m 0755 "$build_dir/${pkg_name}" "$pkg_root/usr/bin/${pkg_name}"
+            install -m 0644 users.yaml "$pkg_root/etc/${pkg_name}/users.yaml"
+            install -m 0644 packaging/deb/default/stream-proxy "$pkg_root/etc/default/stream-proxy"
+            install -m 0644 packaging/systemd/stream-proxy.service "$pkg_root/lib/systemd/system/stream-proxy.service"
+            install -m 0644 README.md "$pkg_root/usr/share/doc/${pkg_name}/README.md"
+            install -m 0755 packaging/deb/scripts/postinst "$pkg_root/DEBIAN/postinst"
+            install -m 0755 packaging/deb/scripts/postrm "$pkg_root/DEBIAN/postrm"
+
+            cat > "$pkg_root/DEBIAN/control" <<EOF
+Package: ${pkg_name}
+Version: ${VERSION}
+Section: net
+Priority: optional
+Architecture: ${arch}
+Maintainer: ${maintainer}
+Depends: adduser, ca-certificates
+Description: ${description}
+EOF
+
+            cat > "$pkg_root/DEBIAN/conffiles" <<EOF
+/etc/${pkg_name}/users.yaml
+/etc/default/${pkg_name}
+EOF
+
+            dpkg-deb --build "$pkg_root"
+            mv "${pkg_root}.deb" "dist/${pkg_name}_${VERSION}_ubuntu_${arch}.deb"
+
+            rm -rf "$build_dir" "$pkg_root"
+          done
+
+          (cd dist && sha256sum *.deb > checksums-deb.txt)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages-${{ steps.version.outputs.value }}
+          path: |
+            dist/*.deb
+            dist/checksums-deb.txt
+
+      - name: Upload assets to release
+        if: ${{ github.event_name == 'release' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.deb
+            dist/checksums-deb.txt
+          fail_on_unmatched_files: true

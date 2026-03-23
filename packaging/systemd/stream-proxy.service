@@ -1,0 +1,29 @@
+[Unit]
+Description=Universal Audio Stream Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stream-proxy
+Group=stream-proxy
+EnvironmentFile=-/etc/default/stream-proxy
+Environment=USERS_FILE=/etc/stream-proxy/users.yaml
+ExecStart=/usr/bin/stream-proxy
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

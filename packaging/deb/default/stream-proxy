@@ -1,0 +1,5 @@
+# Environment overrides for stream-proxy service.
+# USERS_FILE is managed by the package and defaults to /etc/stream-proxy/users.yaml.
+
+PORT=8080
+USERS_FILE=/etc/stream-proxy/users.yaml

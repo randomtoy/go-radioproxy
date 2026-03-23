@@ -1,4 +1,6 @@
-FROM golang:1.23-alpine AS builder
+ARG GO_VERSION=1.23
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /src
 
@@ -6,7 +8,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags='-s -w' -o /out/stream-proxy ./cmd/stream-proxy
 
 FROM gcr.io/distroless/static-debian12:nonroot
