@@ -69,21 +69,11 @@ jobs:
             install -m 0755 packaging/deb/scripts/postinst "$pkg_root/DEBIAN/postinst"
             install -m 0755 packaging/deb/scripts/postrm "$pkg_root/DEBIAN/postrm"
 
-            cat > "$pkg_root/DEBIAN/control" <<EOF
-Package: ${pkg_name}
-Version: ${VERSION}
-Section: net
-Priority: optional
-Architecture: ${arch}
-Maintainer: ${maintainer}
-Depends: adduser, ca-certificates
-Description: ${description}
-EOF
+            printf 'Package: %s\nVersion: %s\nSection: net\nPriority: optional\nArchitecture: %s\nMaintainer: %s\nDepends: adduser, ca-certificates\nDescription: %s\n' \
+              "$pkg_name" "$VERSION" "$arch" "$maintainer" "$description" > "$pkg_root/DEBIAN/control"
 
-            cat > "$pkg_root/DEBIAN/conffiles" <<EOF
-/etc/${pkg_name}/users.yaml
-/etc/default/${pkg_name}
-EOF
+            printf '/etc/%s/users.yaml\n/etc/default/%s\n' \
+              "$pkg_name" "$pkg_name" > "$pkg_root/DEBIAN/conffiles"
 
             dpkg-deb --build "$pkg_root"
             mv "${pkg_root}.deb" "dist/${pkg_name}_${VERSION}_ubuntu_${arch}.deb"
