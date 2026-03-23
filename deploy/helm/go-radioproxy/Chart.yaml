@@ -1,0 +1,12 @@
+apiVersion: v2
+name: go-radioproxy
+description: Helm chart for go-radioproxy stream proxy service
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - audio
+  - stream
+  - proxy
+maintainers:
+  - name: randomtoy

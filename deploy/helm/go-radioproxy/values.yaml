@@ -1,0 +1,97 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/randomtoy/go-radioproxy
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  host: stream-proxy.example.com
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: false
+    secretName: ""
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+probes:
+  liveness:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+usersSecret:
+  enabled: true
+  name: stream-proxy-users
+  key: users.yaml
+  mountDir: /etc/stream-proxy
+
+env:
+  PORT: "8080"
+  USER_AGENT: "UniversalStreamProxy/1.0"
+  CONNECT_TIMEOUT_SECONDS: "10"
+  RESPONSE_HEADER_TIMEOUT_SECONDS: "15"
+  MAX_REDIRECTS: "5"
+  MAX_CONCURRENT_STREAMS: "100"
+  MAX_STREAMS_PER_IP: "5"
+  MAX_STREAMS_PER_USER: "0"
+  LOG_LEVEL: "info"
+  MAX_URL_LENGTH: "2048"
+  ALLOWED_HOSTS: ""
+  DENIED_HOSTS: ""
+
+envFromSecrets: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -217,6 +217,60 @@ sudo systemctl enable --now stream-proxy
 sudo systemctl reload stream-proxy
 ```
 
+## CI Deploy в K3s (GitHub Actions)
+
+В репозитории добавлены workflow:
+
+- `.github/workflows/deploy-dev.yml`  
+  Сборка Docker-образа и деплой в dev при `push` в `main` (и вручную через `workflow_dispatch`).
+- `.github/workflows/deploy-k3s.yml`  
+  Reusable workflow деплоя в K3s через SSH tunnel + Helm chart.
+
+Helm chart:
+
+- `deploy/helm/go-radioproxy`
+- env override для dev: `deploy/values-dev.yaml`
+
+### GitHub Secrets (нужны для deploy)
+
+- `SSH_PRIVATE_KEY`  
+  Приватный SSH ключ для доступа к хосту, через который поднимается tunnel к K3s API.
+- `KUBECONFIG_B64`  
+  Base64 kubeconfig.
+- `USERS_YAML_B64`  
+  Base64 содержимого `users.yaml` (используется для Kubernetes secret `stream-proxy-users`).
+- `GHCR_PULL_TOKEN`  
+  PAT с правом `read:packages` (нужен, если образ в GHCR приватный).
+
+### GitHub Variables или Secrets (для tunnel к K3s)
+
+- `SSH_HOST` (обязательно)
+- `SSH_USER` (обязательно)
+- `SSH_PORT` (опционально, default: `22`)
+- `K8S_API_HOST` (опционально, default: `127.0.0.1`)
+- `K8S_API_PORT` (опционально, default: `6443`)
+
+### Как получить `USERS_YAML_B64`
+
+Linux (GNU coreutils):
+
+```bash
+base64 -w 0 users.yaml
+```
+
+Кросс-платформенно:
+
+```bash
+base64 < users.yaml | tr -d '\n'
+```
+
+Текущее dev-окружение в workflow:
+
+- namespace: `radio-proxy`
+- helm release: `radio-proxy`
+- image: `ghcr.io/<owner>/go-radioproxy:<short_sha>`
+- ingress host: `radio-proxy.randomtoy.dev` (HTTP only)
+
 ## Логирование
 
 Structured JSON logs включают:

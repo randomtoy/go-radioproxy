@@ -1,15 +1,5 @@
 users:
-  - username: user1
-    password_hash: "$2a$10$ayUWAGy/41hJqxxo6TMZTec3NGwawi9eGp2shoMM3gO0qINAIsIfG"
+  - username: madegirah
+    password_hash: "$2a$10$E3EufuEYlnE/EdKEgFwyKO0o0e1r0jFqfPjEiN8HTDJII89hNjc.m"
     enabled: true
-    max_streams: 2
-
-  - username: user2
-    password_hash: "$2a$10$kHnfgLLhVlciweEkyXxFQeKk/8pGeybOhQE53Dk82.XMWBDl2bF6u"
-    enabled: true
-    max_streams: 1
-
-  - username: disabled
-    password_hash: "$2a$10$ayUWAGy/41hJqxxo6TMZTec3NGwawi9eGp2shoMM3gO0qINAIsIfG"
-    enabled: false
-    max_streams: 1
+    max_streams: 3

@@ -1,0 +1,19 @@
+# DEV environment overrides
+# Namespace: radio-proxy
+
+imagePullSecrets:
+  - name: ghcr-radioproxy
+
+ingress:
+  enabled: true
+  className: traefik
+  host: radio-proxy.randomtoy.dev
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  tls:
+    enabled: false
+    secretName: ""
+
+usersSecret:
+  enabled: true
+  name: stream-proxy-users
